@@ -1,6 +1,26 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Shift, Assignment, Section } from '@/types';
 import { mockShifts, mockAssignments } from '@/data/mockData';
+
+const SHIFTS_STORAGE_KEY = 'restaurant_shifts';
+const ASSIGNMENTS_STORAGE_KEY = 'restaurant_assignments';
+
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const saveToStorage = <T,>(key: string, data: T): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Failed to save to localStorage:`, error);
+  }
+};
 
 interface ScheduleContextType {
   shifts: Shift[];
@@ -20,8 +40,17 @@ interface ScheduleContextType {
 const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [shifts, setShifts] = useState<Shift[]>(mockShifts);
-  const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
+  const [shifts, setShifts] = useState<Shift[]>(() => loadFromStorage(SHIFTS_STORAGE_KEY, mockShifts));
+  const [assignments, setAssignments] = useState<Assignment[]>(() => loadFromStorage(ASSIGNMENTS_STORAGE_KEY, mockAssignments));
+
+  // Persist to localStorage whenever data changes
+  useEffect(() => {
+    saveToStorage(SHIFTS_STORAGE_KEY, shifts);
+  }, [shifts]);
+
+  useEffect(() => {
+    saveToStorage(ASSIGNMENTS_STORAGE_KEY, assignments);
+  }, [assignments]);
 
   const addShift = useCallback((shiftData: Omit<Shift, 'id'>) => {
     const newShift: Shift = {
