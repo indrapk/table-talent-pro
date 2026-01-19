@@ -9,6 +9,7 @@ import {
   Box,
   Typography,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { CalendarMonth, AccessTime } from '@mui/icons-material';
 import { useSchedule } from '@/context/ScheduleContext';
@@ -25,8 +26,9 @@ const CreateShiftDialog: React.FC<CreateShiftDialogProps> = ({ open, onClose }) 
   const [startTime, setStartTime] = useState('11:00');
   const [endTime, setEndTime] = useState('15:00');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
 
     if (!date || !startTime || !endTime) {
@@ -39,8 +41,19 @@ const CreateShiftDialog: React.FC<CreateShiftDialogProps> = ({ open, onClose }) 
       return;
     }
 
-    addShift({ date, startTime, endTime });
-    handleClose();
+    setIsSubmitting(true);
+    try {
+      const result = await addShift({ date, startTime, endTime });
+      if (result) {
+        handleClose();
+      } else {
+        setError('Failed to create shift. You may not have permission.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -80,6 +93,7 @@ const CreateShiftDialog: React.FC<CreateShiftDialogProps> = ({ open, onClose }) 
               value={date}
               onChange={(e) => setDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              disabled={isSubmitting}
             />
           </Box>
 
@@ -94,6 +108,7 @@ const CreateShiftDialog: React.FC<CreateShiftDialogProps> = ({ open, onClose }) 
                 fullWidth
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                disabled={isSubmitting}
               />
             </Box>
             <Box>
@@ -106,17 +121,18 @@ const CreateShiftDialog: React.FC<CreateShiftDialogProps> = ({ open, onClose }) 
                 fullWidth
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                disabled={isSubmitting}
               />
             </Box>
           </Box>
         </Box>
       </DialogContent>
       <DialogActions sx={{ p: 3, pt: 2 }}>
-        <Button onClick={handleClose} variant="outlined">
+        <Button onClick={handleClose} variant="outlined" disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit} variant="contained">
-          Create Shift
+        <Button onClick={handleSubmit} variant="contained" disabled={isSubmitting}>
+          {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Create Shift'}
         </Button>
       </DialogActions>
     </Dialog>

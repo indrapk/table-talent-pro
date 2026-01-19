@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box } from '@mui/material';
+import React from 'react';
+import { Box, CircularProgress } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import muiTheme from '@/theme/muiTheme';
@@ -11,17 +11,23 @@ import SchedulerGrid from '@/components/SchedulerGrid';
 import StaffDashboard from '@/components/StaffDashboard';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isManager, logout } = useAuth();
-  const [key, setKey] = useState(0);
+  const { isAuthenticated, isManager, logout, isLoading } = useAuth();
 
   const handleLoginSuccess = () => {
-    setKey(prev => prev + 1);
+    // Auth state change will handle the redirect automatically
   };
 
-  const handleLogout = () => {
-    logout();
-    setKey(prev => prev + 1);
+  const handleLogout = async () => {
+    await logout();
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;

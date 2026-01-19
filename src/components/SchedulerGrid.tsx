@@ -9,6 +9,7 @@ import {
   Button,
   Alert,
   Snackbar,
+  CircularProgress,
 } from '@mui/material';
 import {
   ChevronLeft,
@@ -18,16 +19,16 @@ import {
   PersonAdd,
   Close,
 } from '@mui/icons-material';
-import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
+import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSchedule } from '@/context/ScheduleContext';
-import { User, Shift, Section, SECTIONS, SECTION_COLORS } from '@/types';
+import { Shift, SECTIONS, SECTION_COLORS } from '@/types';
 import CreateShiftDialog from './CreateShiftDialog';
 import AssignStaffDialog from './AssignStaffDialog';
 
 const SchedulerGrid: React.FC = () => {
-  const { users } = useAuth();
-  const { shifts, assignments, deleteShift, unassignStaff, getStaffAssignmentForShift } = useSchedule();
+  const { profiles } = useAuth();
+  const { shifts, assignments, deleteShift, unassignStaff, isLoading } = useSchedule();
   
   const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
@@ -39,7 +40,7 @@ const SchedulerGrid: React.FC = () => {
     severity: 'success',
   });
 
-  const staffMembers = useMemo(() => users.filter(u => u.role === 'staff'), [users]);
+  const staffMembers = useMemo(() => profiles.filter(u => u.role === 'staff'), [profiles]);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
@@ -58,17 +59,17 @@ const SchedulerGrid: React.FC = () => {
     setAssignDialogOpen(true);
   };
 
-  const handleRemoveAssignment = (assignmentId: string, staffName: string) => {
-    unassignStaff(assignmentId);
+  const handleRemoveAssignment = async (assignmentId: string, staffName: string) => {
+    await unassignStaff(assignmentId);
     setSnackbar({ open: true, message: `Removed ${staffName} from shift`, severity: 'success' });
   };
 
-  const handleDeleteShift = (shiftId: string) => {
-    deleteShift(shiftId);
+  const handleDeleteShift = async (shiftId: string) => {
+    await deleteShift(shiftId);
     setSnackbar({ open: true, message: 'Shift deleted', severity: 'success' });
   };
 
-  const renderShiftCard = (shift: Shift, day: Date) => {
+  const renderShiftCard = (shift: Shift) => {
     const shiftAssignments = assignments.filter(a => a.shiftId === shift.id);
     
     return (
@@ -113,7 +114,7 @@ const SchedulerGrid: React.FC = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {SECTIONS.map(section => {
             const assignment = shiftAssignments.find(a => a.section === section);
-            const staff = assignment ? staffMembers.find(s => s.id === assignment.staffId) : null;
+            const staff = assignment ? staffMembers.find(s => s.user_id === assignment.staffId) : null;
             const colors = SECTION_COLORS[section];
 
             return (
@@ -176,6 +177,14 @@ const SchedulerGrid: React.FC = () => {
       </Paper>
     );
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -307,7 +316,7 @@ const SchedulerGrid: React.FC = () => {
                   <Typography variant="body2">No shifts</Typography>
                 </Box>
               ) : (
-                dayShifts.map(shift => renderShiftCard(shift, day))
+                dayShifts.map(shift => renderShiftCard(shift))
               )}
             </Paper>
           );

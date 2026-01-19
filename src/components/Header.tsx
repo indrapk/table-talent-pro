@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onLogout }) => {
-  const { user, isManager } = useAuth();
+  const { profile, isManager } = useAuth();
 
   return (
     <AppBar 
@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ onLogout }) => {
             </Avatar>
             <Box>
               <Typography variant="body2" fontWeight={600} color="text.primary">
-                {user?.name}
+                {profile?.name}
               </Typography>
               <Chip 
                 label={isManager ? 'Manager' : 'Staff'}
