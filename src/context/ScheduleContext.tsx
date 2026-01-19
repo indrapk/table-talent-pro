@@ -1,71 +1,163 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Shift, Assignment, Section } from '@/types';
-import { mockShifts, mockAssignments } from '@/data/mockData';
+import { useAuth } from './AuthContext';
 
-const SHIFTS_STORAGE_KEY = 'restaurant_shifts';
-const ASSIGNMENTS_STORAGE_KEY = 'restaurant_assignments';
+interface DbShift {
+  id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
-const loadFromStorage = <T,>(key: string, fallback: T): T => {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const saveToStorage = <T,>(key: string, data: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.error(`Failed to save to localStorage:`, error);
-  }
-};
+interface DbAssignment {
+  id: string;
+  shift_id: string;
+  staff_id: string;
+  section: Section;
+  created_at: string;
+  updated_at: string;
+}
 
 interface ScheduleContextType {
   shifts: Shift[];
   assignments: Assignment[];
-  addShift: (shift: Omit<Shift, 'id'>) => Shift;
-  updateShift: (id: string, updates: Partial<Shift>) => void;
-  deleteShift: (id: string) => void;
-  assignStaff: (shiftId: string, staffId: string, section: Section) => { success: boolean; error?: string };
-  unassignStaff: (assignmentId: string) => void;
+  isLoading: boolean;
+  addShift: (shift: Omit<Shift, 'id'>) => Promise<Shift | null>;
+  updateShift: (id: string, updates: Partial<Shift>) => Promise<void>;
+  deleteShift: (id: string) => Promise<void>;
+  assignStaff: (shiftId: string, staffId: string, section: Section) => Promise<{ success: boolean; error?: string }>;
+  unassignStaff: (assignmentId: string) => Promise<void>;
   getAssignment: (shiftId: string, staffId: string) => Assignment | undefined;
   getStaffAssignmentForShift: (shiftId: string, staffId: string) => Assignment | undefined;
   isStaffAssignedToShift: (shiftId: string, staffId: string) => boolean;
   getAssignmentsForShift: (shiftId: string) => Assignment[];
   getAssignmentsForStaff: (staffId: string) => Assignment[];
+  refreshData: () => Promise<void>;
 }
 
 const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
 
+const mapDbShiftToShift = (dbShift: DbShift): Shift => ({
+  id: dbShift.id,
+  date: dbShift.date,
+  startTime: dbShift.start_time.substring(0, 5), // Remove seconds
+  endTime: dbShift.end_time.substring(0, 5),
+});
+
+const mapDbAssignmentToAssignment = (dbAssignment: DbAssignment): Assignment => ({
+  id: dbAssignment.id,
+  shiftId: dbAssignment.shift_id,
+  staffId: dbAssignment.staff_id,
+  section: dbAssignment.section,
+});
+
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [shifts, setShifts] = useState<Shift[]>(() => loadFromStorage(SHIFTS_STORAGE_KEY, mockShifts));
-  const [assignments, setAssignments] = useState<Assignment[]>(() => loadFromStorage(ASSIGNMENTS_STORAGE_KEY, mockAssignments));
+  const { isAuthenticated } = useAuth();
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Persist to localStorage whenever data changes
+  const fetchShifts = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('shifts')
+      .select('*')
+      .order('date', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching shifts:', error);
+      return [];
+    }
+    return (data as DbShift[]).map(mapDbShiftToShift);
+  }, []);
+
+  const fetchAssignments = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('assignments')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching assignments:', error);
+      return [];
+    }
+    return (data as DbAssignment[]).map(mapDbAssignmentToAssignment);
+  }, []);
+
+  const refreshData = useCallback(async () => {
+    setIsLoading(true);
+    const [shiftsData, assignmentsData] = await Promise.all([
+      fetchShifts(),
+      fetchAssignments(),
+    ]);
+    setShifts(shiftsData);
+    setAssignments(assignmentsData);
+    setIsLoading(false);
+  }, [fetchShifts, fetchAssignments]);
+
   useEffect(() => {
-    saveToStorage(SHIFTS_STORAGE_KEY, shifts);
-  }, [shifts]);
+    if (isAuthenticated) {
+      refreshData();
+    } else {
+      setShifts([]);
+      setAssignments([]);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, refreshData]);
 
-  useEffect(() => {
-    saveToStorage(ASSIGNMENTS_STORAGE_KEY, assignments);
-  }, [assignments]);
+  const addShift = useCallback(async (shiftData: Omit<Shift, 'id'>): Promise<Shift | null> => {
+    const { data, error } = await supabase
+      .from('shifts')
+      .insert({
+        date: shiftData.date,
+        start_time: shiftData.startTime,
+        end_time: shiftData.endTime,
+      })
+      .select()
+      .single();
 
-  const addShift = useCallback((shiftData: Omit<Shift, 'id'>) => {
-    const newShift: Shift = {
-      ...shiftData,
-      id: `s${Date.now()}`,
-    };
+    if (error) {
+      console.error('Error adding shift:', error);
+      return null;
+    }
+
+    const newShift = mapDbShiftToShift(data as DbShift);
     setShifts(prev => [...prev, newShift]);
     return newShift;
   }, []);
 
-  const updateShift = useCallback((id: string, updates: Partial<Shift>) => {
+  const updateShift = useCallback(async (id: string, updates: Partial<Shift>) => {
+    const dbUpdates: Partial<DbShift> = {};
+    if (updates.date) dbUpdates.date = updates.date;
+    if (updates.startTime) dbUpdates.start_time = updates.startTime;
+    if (updates.endTime) dbUpdates.end_time = updates.endTime;
+
+    const { error } = await supabase
+      .from('shifts')
+      .update(dbUpdates)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating shift:', error);
+      return;
+    }
+
     setShifts(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
   }, []);
 
-  const deleteShift = useCallback((id: string) => {
+  const deleteShift = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('shifts')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting shift:', error);
+      return;
+    }
+
     setShifts(prev => prev.filter(s => s.id !== id));
     setAssignments(prev => prev.filter(a => a.shiftId !== id));
   }, []);
@@ -78,7 +170,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return assignments.find(a => a.shiftId === shiftId && a.staffId === staffId);
   }, [assignments]);
 
-  const assignStaff = useCallback((shiftId: string, staffId: string, section: Section) => {
+  const assignStaff = useCallback(async (shiftId: string, staffId: string, section: Section) => {
     // Validation: Check if staff is already assigned to this shift
     if (isStaffAssignedToShift(shiftId, staffId)) {
       return { 
@@ -87,17 +179,37 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
     }
 
-    const newAssignment: Assignment = {
-      id: `a${Date.now()}`,
-      shiftId,
-      staffId,
-      section,
-    };
+    const { data, error } = await supabase
+      .from('assignments')
+      .insert({
+        shift_id: shiftId,
+        staff_id: staffId,
+        section,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error assigning staff:', error);
+      return { success: false, error: error.message };
+    }
+
+    const newAssignment = mapDbAssignmentToAssignment(data as DbAssignment);
     setAssignments(prev => [...prev, newAssignment]);
     return { success: true };
   }, [isStaffAssignedToShift]);
 
-  const unassignStaff = useCallback((assignmentId: string) => {
+  const unassignStaff = useCallback(async (assignmentId: string) => {
+    const { error } = await supabase
+      .from('assignments')
+      .delete()
+      .eq('id', assignmentId);
+
+    if (error) {
+      console.error('Error unassigning staff:', error);
+      return;
+    }
+
     setAssignments(prev => prev.filter(a => a.id !== assignmentId));
   }, []);
 
@@ -118,6 +230,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         shifts,
         assignments,
+        isLoading,
         addShift,
         updateShift,
         deleteShift,
@@ -128,6 +241,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isStaffAssignedToShift,
         getAssignmentsForShift,
         getAssignmentsForStaff,
+        refreshData,
       }}
     >
       {children}

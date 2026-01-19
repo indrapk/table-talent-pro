@@ -13,6 +13,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import { Person, Block, CheckCircle } from '@mui/icons-material';
 import { useAuth } from '@/context/AuthContext';
@@ -26,13 +27,14 @@ interface AssignStaffDialogProps {
 }
 
 const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, shift }) => {
-  const { users } = useAuth();
+  const { profiles } = useAuth();
   const { assignStaff, isStaffAssignedToShift, getAssignmentsForShift } = useSchedule();
   const [selectedStaff, setSelectedStaff] = useState('');
   const [selectedSection, setSelectedSection] = useState<Section | ''>('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const staffMembers = useMemo(() => users.filter(u => u.role === 'staff'), [users]);
+  const staffMembers = useMemo(() => profiles.filter(u => u.role === 'staff'), [profiles]);
 
   const currentAssignments = useMemo(() => {
     if (!shift) return [];
@@ -48,7 +50,7 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
     return isStaffAssignedToShift(shift.id, staffId) ? 'assigned' : 'available';
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
 
     if (!selectedStaff || !selectedSection || !shift) {
@@ -62,11 +64,18 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
       return;
     }
 
-    const result = assignStaff(shift.id, selectedStaff, selectedSection);
-    if (result.success) {
-      handleClose();
-    } else {
-      setError(result.error || 'Failed to assign staff');
+    setIsSubmitting(true);
+    try {
+      const result = await assignStaff(shift.id, selectedStaff, selectedSection);
+      if (result.success) {
+        handleClose();
+      } else {
+        setError(result.error || 'Failed to assign staff');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -104,7 +113,7 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {SECTIONS.map(section => {
               const assignment = currentAssignments.find(a => a.section === section);
-              const staff = assignment ? staffMembers.find(s => s.id === assignment.staffId) : null;
+              const staff = assignment ? staffMembers.find(s => s.user_id === assignment.staffId) : null;
               const colors = SECTION_COLORS[section];
 
               return (
@@ -149,7 +158,7 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
 
         {/* New Assignment Form */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <FormControl fullWidth>
+          <FormControl fullWidth disabled={isSubmitting}>
             <InputLabel>Select Staff Member</InputLabel>
             <Select
               value={selectedStaff}
@@ -157,13 +166,13 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
               label="Select Staff Member"
             >
               {staffMembers.map(staff => {
-                const status = getStaffStatus(staff.id);
+                const status = getStaffStatus(staff.user_id);
                 const isAssigned = status === 'assigned';
 
                 return (
                   <MenuItem 
-                    key={staff.id} 
-                    value={staff.id}
+                    key={staff.user_id} 
+                    value={staff.user_id}
                     disabled={isAssigned}
                     sx={{
                       display: 'flex',
@@ -191,7 +200,7 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
             </Select>
           </FormControl>
 
-          <FormControl fullWidth>
+          <FormControl fullWidth disabled={isSubmitting}>
             <InputLabel>Select Section</InputLabel>
             <Select
               value={selectedSection}
@@ -235,15 +244,15 @@ const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, sh
         </Box>
       </DialogContent>
       <DialogActions sx={{ p: 3, pt: 2 }}>
-        <Button onClick={handleClose} variant="outlined">
+        <Button onClick={handleClose} variant="outlined" disabled={isSubmitting}>
           Cancel
         </Button>
         <Button 
           onClick={handleSubmit} 
           variant="contained"
-          disabled={!selectedStaff || !selectedSection}
+          disabled={!selectedStaff || !selectedSection || isSubmitting}
         >
-          Assign Staff
+          {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Assign Staff'}
         </Button>
       </DialogActions>
     </Dialog>

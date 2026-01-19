@@ -7,6 +7,7 @@ import {
   CardContent,
   Chip,
   Avatar,
+  CircularProgress,
 } from '@mui/material';
 import { CalendarMonth, AccessTime, Place, EventAvailable } from '@mui/icons-material';
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
@@ -15,13 +16,13 @@ import { useSchedule } from '@/context/ScheduleContext';
 import { SECTION_COLORS } from '@/types';
 
 const StaffDashboard: React.FC = () => {
-  const { user } = useAuth();
-  const { shifts, getAssignmentsForStaff } = useSchedule();
+  const { profile } = useAuth();
+  const { shifts, getAssignmentsForStaff, isLoading } = useSchedule();
 
   const myAssignments = useMemo(() => {
-    if (!user) return [];
-    return getAssignmentsForStaff(user.id);
-  }, [user, getAssignmentsForStaff]);
+    if (!profile) return [];
+    return getAssignmentsForStaff(profile.user_id);
+  }, [profile, getAssignmentsForStaff]);
 
   const upcomingShifts = useMemo(() => {
     const today = startOfDay(new Date());
@@ -43,6 +44,14 @@ const StaffDashboard: React.FC = () => {
         return a.shift.startTime.localeCompare(b.shift.startTime);
       });
   }, [myAssignments, shifts]);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>

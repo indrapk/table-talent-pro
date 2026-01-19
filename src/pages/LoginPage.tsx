@@ -11,6 +11,7 @@ import {
   Alert,
   Container,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import { Restaurant, Person, ManageAccounts } from '@mui/icons-material';
 import { useAuth } from '@/context/AuthContext';
@@ -28,29 +29,43 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('staff');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSubmitting(true);
 
-    if (isSignup) {
-      if (!name.trim()) {
-        setError('Name is required');
-        return;
-      }
-      const result = signup(name, email, password, role);
-      if (result.success) {
-        onLoginSuccess();
+    try {
+      if (isSignup) {
+        if (!name.trim()) {
+          setError('Name is required');
+          setIsSubmitting(false);
+          return;
+        }
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters');
+          setIsSubmitting(false);
+          return;
+        }
+        const result = await signup(name, email, password, role);
+        if (result.success) {
+          onLoginSuccess();
+        } else {
+          setError(result.error || 'Signup failed');
+        }
       } else {
-        setError(result.error || 'Signup failed');
+        const result = await login(email, password);
+        if (result.success) {
+          onLoginSuccess();
+        } else {
+          setError(result.error || 'Login failed');
+        }
       }
-    } else {
-      const result = login(email, password);
-      if (result.success) {
-        onLoginSuccess();
-      } else {
-        setError(result.error || 'Login failed');
-      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -110,6 +125,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   onChange={(e) => setName(e.target.value)}
                   sx={{ mb: 2 }}
                   required
+                  disabled={isSubmitting}
                 />
               )}
               <TextField
@@ -120,6 +136,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 sx={{ mb: 2 }}
                 required
+                disabled={isSubmitting}
               />
               <TextField
                 fullWidth
@@ -129,6 +146,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 sx={{ mb: 3 }}
                 required
+                disabled={isSubmitting}
+                helperText={isSignup ? 'At least 6 characters' : ''}
               />
 
               {isSignup && (
@@ -142,6 +161,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     onChange={(_, newRole) => newRole && setRole(newRole)}
                     fullWidth
                     sx={{ gap: 2 }}
+                    disabled={isSubmitting}
                   >
                     <ToggleButton 
                       value="staff" 
@@ -197,8 +217,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 fullWidth
                 size="large"
                 sx={{ py: 1.5, fontSize: '1rem' }}
+                disabled={isSubmitting}
               >
-                {isSignup ? 'Create Account' : 'Sign In'}
+                {isSubmitting ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  isSignup ? 'Create Account' : 'Sign In'
+                )}
               </Button>
             </form>
 
@@ -215,22 +240,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   setError('');
                 }}
                 sx={{ mt: 0.5 }}
+                disabled={isSubmitting}
               >
                 {isSignup ? 'Sign In' : 'Create Account'}
               </Button>
             </Box>
-
-            {!isSignup && (
-              <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  <strong>Demo Accounts:</strong>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                  Manager: manager@restaurant.com / password123<br />
-                  Staff: john@restaurant.com / password123
-                </Typography>
-              </Box>
-            )}
           </CardContent>
         </Card>
       </Container>
