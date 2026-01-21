@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -9,9 +9,13 @@ import LoginPage from '@/pages/LoginPage';
 import Header from '@/components/Header';
 import SchedulerGrid from '@/components/SchedulerGrid';
 import StaffDashboard from '@/components/StaffDashboard';
+import StaffScheduleView from '@/components/StaffScheduleView';
+import ViewSwitcher from '@/components/ViewSwitcher';
+import { ViewType } from '@/types/views';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isManager, logout, isLoading } = useAuth();
+  const [currentView, setCurrentView] = useState<ViewType>('calendar');
 
   const handleLoginSuccess = () => {
     // Auth state change will handle the redirect automatically
@@ -33,10 +37,21 @@ const AppContent: React.FC = () => {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
+  // Staff users see their dashboard, managers see the schedule manager with views
+  if (!isManager) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <Header onLogout={handleLogout} />
+        <StaffDashboard />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Header onLogout={handleLogout} />
-      {isManager ? <SchedulerGrid /> : <StaffDashboard />}
+      <Header onLogout={handleLogout} viewSwitcher={<ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />} />
+      {currentView === 'calendar' && <SchedulerGrid />}
+      {currentView === 'staff' && <StaffScheduleView />}
     </Box>
   );
 };
