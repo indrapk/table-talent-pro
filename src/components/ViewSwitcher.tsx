@@ -1,6 +1,6 @@
 import React from 'react';
 import { ToggleButtonGroup, ToggleButton, Tooltip } from '@mui/material';
-import { CalendarMonth, People } from '@mui/icons-material';
+import { CalendarMonth, People, TableChart } from '@mui/icons-material';
 import { ViewType, VIEW_CONFIGS } from '@/types/views';
 
 interface ViewSwitcherProps {
@@ -11,6 +11,7 @@ interface ViewSwitcherProps {
 const iconMap: Record<string, React.ReactNode> = {
   calendar: <CalendarMonth />,
   people: <People />,
+  section: <TableChart />,
 };
 
 const ViewSwitcher: React.FC<ViewSwitcherProps> = ({ currentView, onViewChange }) => {

@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import SchedulerGrid from '@/components/SchedulerGrid';
 import StaffDashboard from '@/components/StaffDashboard';
 import StaffScheduleView from '@/components/StaffScheduleView';
+import SectionScheduleView from '@/components/SectionScheduleView';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { ViewType } from '@/types/views';
 
@@ -52,6 +53,7 @@ const AppContent: React.FC = () => {
       <Header onLogout={handleLogout} viewSwitcher={<ViewSwitcher currentView={currentView} onViewChange={setCurrentView} />} />
       {currentView === 'calendar' && <SchedulerGrid />}
       {currentView === 'staff' && <StaffScheduleView />}
+      {currentView === 'section' && <SectionScheduleView />}
     </Box>
   );
 };
