@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -24,13 +24,21 @@ interface AssignStaffDialogProps {
   open: boolean;
   onClose: () => void;
   shift: Shift | null;
+  preselectedStaffId?: string;
 }
 
-const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, shift }) => {
+const AssignStaffDialog: React.FC<AssignStaffDialogProps> = ({ open, onClose, shift, preselectedStaffId }) => {
   const { profiles } = useAuth();
   const { assignStaff, isStaffAssignedToShift, getAssignmentsForShift } = useSchedule();
   const [selectedStaff, setSelectedStaff] = useState('');
   const [selectedSection, setSelectedSection] = useState<Section | ''>('');
+
+  // Set preselected staff when dialog opens
+  useEffect(() => {
+    if (open && preselectedStaffId) {
+      setSelectedStaff(preselectedStaffId);
+    }
+  }, [open, preselectedStaffId]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 

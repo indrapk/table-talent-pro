@@ -13,9 +13,10 @@ import { useAuth } from '@/context/AuthContext';
 
 interface HeaderProps {
   onLogout: () => void;
+  viewSwitcher?: React.ReactNode;
 }
 
-const Header: React.FC<HeaderProps> = ({ onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ onLogout, viewSwitcher }) => {
   const { profile, isManager } = useAuth();
 
   return (
@@ -54,6 +55,12 @@ const Header: React.FC<HeaderProps> = ({ onLogout }) => {
             FloorFlow
           </Typography>
         </Box>
+
+        {viewSwitcher && (
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {viewSwitcher}
+          </Box>
+        )}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
