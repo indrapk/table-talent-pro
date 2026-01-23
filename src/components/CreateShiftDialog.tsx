@@ -44,10 +44,10 @@ const CreateShiftDialog: React.FC<CreateShiftDialogProps> = ({ open, onClose }) 
     setIsSubmitting(true);
     try {
       const result = await addShift({ date, startTime, endTime });
-      if (result) {
+      if (result.success) {
         handleClose();
       } else {
-        setError('Failed to create shift. You may not have permission.');
+        setError(result.error || 'Failed to create shift.');
       }
     } catch (err) {
       setError('An unexpected error occurred');
