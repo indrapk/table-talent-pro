@@ -26,7 +26,8 @@ interface ScheduleContextType {
   shifts: Shift[];
   assignments: Assignment[];
   isLoading: boolean;
-  addShift: (shift: Omit<Shift, 'id'>) => Promise<Shift | null>;
+  addShift: (shift: Omit<Shift, 'id'>) => Promise<{ success: boolean; shift?: Shift; error?: string }>;
+  checkShiftOverlap: (date: string, startTime: string, endTime: string, excludeShiftId?: string) => boolean;
   updateShift: (id: string, updates: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
   assignStaff: (shiftId: string, staffId: string, section: Section) => Promise<{ success: boolean; error?: string }>;
@@ -107,7 +108,26 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [isAuthenticated, refreshData]);
 
-  const addShift = useCallback(async (shiftData: Omit<Shift, 'id'>): Promise<Shift | null> => {
+  const checkShiftOverlap = useCallback((date: string, startTime: string, endTime: string, excludeShiftId?: string): boolean => {
+    return shifts.some(shift => {
+      if (shift.date !== date) return false;
+      if (excludeShiftId && shift.id === excludeShiftId) return false;
+      
+      // Check if time ranges overlap
+      // Overlap occurs when: newStart < existingEnd AND newEnd > existingStart
+      return startTime < shift.endTime && endTime > shift.startTime;
+    });
+  }, [shifts]);
+
+  const addShift = useCallback(async (shiftData: Omit<Shift, 'id'>): Promise<{ success: boolean; shift?: Shift; error?: string }> => {
+    // Check for overlapping shifts
+    if (checkShiftOverlap(shiftData.date, shiftData.startTime, shiftData.endTime)) {
+      return { 
+        success: false, 
+        error: 'A shift already exists during this time. Please choose a different time slot.' 
+      };
+    }
+
     const { data, error } = await supabase
       .from('shifts')
       .insert({
@@ -120,13 +140,13 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (error) {
       console.error('Error adding shift:', error);
-      return null;
+      return { success: false, error: 'Failed to create shift. You may not have permission.' };
     }
 
     const newShift = mapDbShiftToShift(data as DbShift);
     setShifts(prev => [...prev, newShift]);
-    return newShift;
-  }, []);
+    return { success: true, shift: newShift };
+  }, [checkShiftOverlap]);
 
   const updateShift = useCallback(async (id: string, updates: Partial<Shift>) => {
     const dbUpdates: Partial<DbShift> = {};
@@ -242,6 +262,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         getAssignmentsForShift,
         getAssignmentsForStaff,
         refreshData,
+        checkShiftOverlap,
       }}
     >
       {children}
