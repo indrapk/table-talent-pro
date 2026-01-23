@@ -6,16 +6,13 @@ import {
   TextField,
   Button,
   Typography,
-  ToggleButtonGroup,
-  ToggleButton,
   Alert,
   Container,
   Divider,
   CircularProgress,
 } from '@mui/material';
-import { Restaurant, Person, ManageAccounts } from '@mui/icons-material';
+import { Restaurant } from '@mui/icons-material';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@/types';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -27,7 +24,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('staff');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,7 +44,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           setIsSubmitting(false);
           return;
         }
-        const result = await signup(name, email, password, role);
+        const result = await signup(name, email, password, 'manager');
         if (result.success) {
           onLoginSuccess();
         } else {
@@ -151,64 +147,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               />
 
               {isSignup && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography sx={{ mb: 1.5, fontWeight: 500, color: 'text.secondary' }}>
-                    Select your role:
-                  </Typography>
-                  <ToggleButtonGroup
-                    value={role}
-                    exclusive
-                    onChange={(_, newRole) => newRole && setRole(newRole)}
-                    fullWidth
-                    sx={{ gap: 2 }}
-                    disabled={isSubmitting}
-                  >
-                    <ToggleButton 
-                      value="staff" 
-                      sx={{ 
-                        flex: 1, 
-                        py: 2,
-                        borderRadius: '8px !important',
-                        border: '2px solid',
-                        borderColor: role === 'staff' ? 'primary.main' : 'divider',
-                        '&.Mui-selected': {
-                          bgcolor: 'primary.main',
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: 'primary.dark',
-                          },
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                        <Person />
-                        <Typography variant="body2" fontWeight={600}>Staff</Typography>
-                      </Box>
-                    </ToggleButton>
-                    <ToggleButton 
-                      value="manager"
-                      sx={{ 
-                        flex: 1, 
-                        py: 2,
-                        borderRadius: '8px !important',
-                        border: '2px solid',
-                        borderColor: role === 'manager' ? 'primary.main' : 'divider',
-                        '&.Mui-selected': {
-                          bgcolor: 'primary.main',
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: 'primary.dark',
-                          },
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                        <ManageAccounts />
-                        <Typography variant="body2" fontWeight={600}>Manager</Typography>
-                      </Box>
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Box>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Only managers can create accounts here. Staff accounts are created by managers from the Staff Management page.
+                </Alert>
               )}
 
               <Button

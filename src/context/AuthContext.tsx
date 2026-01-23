@@ -9,6 +9,7 @@ interface Profile {
   name: string;
   email: string;
   role: UserRole;
+  is_active: boolean;
 }
 
 interface AuthContextType {
@@ -99,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchProfile, refreshProfiles]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -107,6 +108,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       return { success: false, error: error.message };
     }
+
+    // Check if account is active
+    if (data.user) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_active')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        await supabase.auth.signOut();
+        return { success: false, error: 'Error checking account status' };
+      }
+
+      if (profileData && profileData.is_active === false) {
+        await supabase.auth.signOut();
+        return { success: false, error: 'Your account has been deactivated. Please contact your manager.' };
+      }
+    }
+
     return { success: true };
   }, []);
 
