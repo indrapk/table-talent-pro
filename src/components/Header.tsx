@@ -14,9 +14,10 @@ import { useAuth } from '@/context/AuthContext';
 interface HeaderProps {
   onLogout: () => void;
   viewSwitcher?: React.ReactNode;
+  onProfileClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onLogout, viewSwitcher }) => {
+const Header: React.FC<HeaderProps> = ({ onLogout, viewSwitcher, onProfileClick }) => {
   const { profile, isManager } = useAuth();
 
   return (
@@ -63,7 +64,19 @@ const Header: React.FC<HeaderProps> = ({ onLogout, viewSwitcher }) => {
         )}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5,
+              cursor: onProfileClick ? 'pointer' : 'default',
+              borderRadius: 2,
+              p: 0.5,
+              transition: 'background-color 0.2s',
+              '&:hover': onProfileClick ? { bgcolor: 'action.hover' } : {},
+            }}
+            onClick={onProfileClick}
+          >
             <Avatar 
               src={profile?.avatar_url || undefined}
               sx={{ 

@@ -12,12 +12,14 @@ import StaffDashboard from '@/components/StaffDashboard';
 import StaffScheduleView from '@/components/StaffScheduleView';
 import SectionScheduleView from '@/components/SectionScheduleView';
 import StaffManagement from '@/components/StaffManagement';
+import ProfilePage from '@/components/ProfilePage';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { ViewType } from '@/types/views';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isManager, logout, isLoading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('calendar');
+  const [showProfile, setShowProfile] = useState(false);
 
   const handleLoginSuccess = () => {
     // Auth state change will handle the redirect automatically
@@ -39,12 +41,16 @@ const AppContent: React.FC = () => {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Staff users see their dashboard, managers see the schedule manager with views
+  // Staff users see their dashboard or profile
   if (!isManager) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <Header onLogout={handleLogout} />
-        <StaffDashboard />
+        <Header onLogout={handleLogout} onProfileClick={() => setShowProfile(true)} />
+        {showProfile ? (
+          <ProfilePage onBack={() => setShowProfile(false)} />
+        ) : (
+          <StaffDashboard />
+        )}
       </Box>
     );
   }
