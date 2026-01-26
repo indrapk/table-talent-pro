@@ -18,12 +18,15 @@ interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
+const REGISTRATION_SECRET_CODE = 'ABCD123';
+
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const { login, signup } = useAuth();
   const [isSignup, setIsSignup] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [secretCode, setSecretCode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,6 +44,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         }
         if (password.length < 6) {
           setError('Password must be at least 6 characters');
+          setIsSubmitting(false);
+          return;
+        }
+        if (secretCode.toUpperCase() !== REGISTRATION_SECRET_CODE) {
+          setError('Invalid secret code');
           setIsSubmitting(false);
           return;
         }
@@ -114,15 +122,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             <form onSubmit={handleSubmit}>
               {isSignup && (
-                <TextField
-                  fullWidth
-                  label="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  sx={{ mb: 2 }}
-                  required
-                  disabled={isSubmitting}
-                />
+                <>
+                  <TextField
+                    fullWidth
+                    label="Full Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    sx={{ mb: 2 }}
+                    required
+                    disabled={isSubmitting}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Secret Code"
+                    value={secretCode}
+                    onChange={(e) => setSecretCode(e.target.value.toUpperCase())}
+                    sx={{ mb: 2 }}
+                    required
+                    disabled={isSubmitting}
+                    inputProps={{ maxLength: 7 }}
+                    helperText="6-digit alphanumeric code required to register"
+                  />
+                </>
               )}
               <TextField
                 fullWidth
@@ -179,6 +200,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 onClick={() => {
                   setIsSignup(!isSignup);
                   setError('');
+                  setSecretCode('');
                 }}
                 sx={{ mt: 0.5 }}
                 disabled={isSubmitting}
