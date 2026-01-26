@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Card,
@@ -15,6 +15,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Avatar,
 } from '@mui/material';
 import {
   PersonAdd,
@@ -23,22 +24,118 @@ import {
   Person,
   Email,
   Lock,
+  Edit,
+  PhotoCamera,
 } from '@mui/icons-material';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
+interface StaffFormData {
+  name: string;
+  email: string;
+  password: string;
+  avatarFile: File | null;
+  avatarPreview: string | null;
+}
+
+interface EditFormData {
+  name: string;
+  email: string;
+  avatarFile: File | null;
+  avatarPreview: string | null;
+}
+
 const StaffManagement: React.FC = () => {
-  const { profiles, refreshProfiles, session } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { profiles, refreshProfiles } = useAuth();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<typeof profiles[0] | null>(null);
+  
+  // Create form state
+  const [createForm, setCreateForm] = useState<StaffFormData>({
+    name: '',
+    email: '',
+    password: '',
+    avatarFile: null,
+    avatarPreview: null,
+  });
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState<EditFormData>({
+    name: '',
+    email: '',
+    avatarFile: null,
+    avatarPreview: null,
+  });
+  
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  
+  const createFileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const staffMembers = profiles.filter(p => p.role === 'staff');
+
+  const uploadAvatar = async (file: File, userId: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  const handleCreateFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCreateForm(prev => ({
+          ...prev,
+          avatarFile: file,
+          avatarPreview: reader.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditForm(prev => ({
+          ...prev,
+          avatarFile: file,
+          avatarPreview: reader.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,24 +144,24 @@ const StaffManagement: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      if (!name.trim()) {
+      if (!createForm.name.trim()) {
         setError('Name is required');
         setIsSubmitting(false);
         return;
       }
-      if (!email.trim()) {
+      if (!createForm.email.trim()) {
         setError('Email is required');
         setIsSubmitting(false);
         return;
       }
-      if (password.length < 6) {
+      if (createForm.password.length < 6) {
         setError('Password must be at least 6 characters');
         setIsSubmitting(false);
         return;
       }
 
       const { data, error: fnError } = await supabase.functions.invoke('create-staff', {
-        body: { name, email, password }
+        body: { name: createForm.name, email: createForm.email, password: createForm.password }
       });
 
       if (fnError) {
@@ -79,18 +176,100 @@ const StaffManagement: React.FC = () => {
         return;
       }
 
+      // Upload avatar if provided
+      if (createForm.avatarFile && data?.user?.id) {
+        const avatarUrl = await uploadAvatar(createForm.avatarFile, data.user.id);
+        if (avatarUrl) {
+          await supabase
+            .from('profiles')
+            .update({ avatar_url: avatarUrl })
+            .eq('user_id', data.user.id);
+        }
+      }
+
       setSuccess('Staff member created successfully!');
-      setName('');
-      setEmail('');
-      setPassword('');
+      setCreateForm({
+        name: '',
+        email: '',
+        password: '',
+        avatarFile: null,
+        avatarPreview: null,
+      });
       await refreshProfiles();
       
       setTimeout(() => {
-        setIsDialogOpen(false);
+        setIsCreateDialogOpen(false);
         setSuccess('');
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to create staff member');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (staff: typeof profiles[0]) => {
+    setEditingStaff(staff);
+    setEditForm({
+      name: staff.name,
+      email: staff.email,
+      avatarFile: null,
+      avatarPreview: staff.avatar_url || null,
+    });
+    setError('');
+    setSuccess('');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    
+    setError('');
+    setSuccess('');
+    setIsSubmitting(true);
+
+    try {
+      if (!editForm.name.trim()) {
+        setError('Name is required');
+        setIsSubmitting(false);
+        return;
+      }
+
+      let avatarUrl = editingStaff.avatar_url;
+
+      // Upload new avatar if provided
+      if (editForm.avatarFile) {
+        const newAvatarUrl = await uploadAvatar(editForm.avatarFile, editingStaff.user_id);
+        if (newAvatarUrl) {
+          avatarUrl = newAvatarUrl;
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          name: editForm.name,
+          avatar_url: avatarUrl,
+        })
+        .eq('user_id', editingStaff.user_id);
+
+      if (updateError) {
+        setError(updateError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccess('Staff member updated successfully!');
+      await refreshProfiles();
+      
+      setTimeout(() => {
+        setIsEditDialogOpen(false);
+        setEditingStaff(null);
+        setSuccess('');
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update staff member');
     } finally {
       setIsSubmitting(false);
     }
@@ -117,6 +296,32 @@ const StaffManagement: React.FC = () => {
     }
   };
 
+  const handleCloseCreateDialog = () => {
+    setIsCreateDialogOpen(false);
+    setCreateForm({
+      name: '',
+      email: '',
+      password: '',
+      avatarFile: null,
+      avatarPreview: null,
+    });
+    setError('');
+    setSuccess('');
+  };
+
+  const handleCloseEditDialog = () => {
+    setIsEditDialogOpen(false);
+    setEditingStaff(null);
+    setEditForm({
+      name: '',
+      email: '',
+      avatarFile: null,
+      avatarPreview: null,
+    });
+    setError('');
+    setSuccess('');
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -126,7 +331,7 @@ const StaffManagement: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<PersonAdd />}
-          onClick={() => setIsDialogOpen(true)}
+          onClick={() => setIsCreateDialogOpen(true)}
         >
           Add Staff
         </Button>
@@ -145,7 +350,7 @@ const StaffManagement: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<PersonAdd />}
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => setIsCreateDialogOpen(true)}
             >
               Add Staff Member
             </Button>
@@ -157,22 +362,18 @@ const StaffManagement: React.FC = () => {
             <Card key={staff.id} sx={{ opacity: staff.is_active === false ? 0.6 : 1 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box
+                  <Avatar
+                    src={staff.avatar_url || undefined}
                     sx={{
                       width: 48,
                       height: 48,
-                      borderRadius: '50%',
                       bgcolor: staff.is_active === false ? 'grey.300' : 'primary.main',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 600,
                       fontSize: '1.2rem',
+                      fontWeight: 600,
                     }}
                   >
                     {staff.name.charAt(0).toUpperCase()}
-                  </Box>
+                  </Avatar>
                   <Box>
                     <Typography fontWeight={600}>{staff.name}</Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -180,12 +381,20 @@ const StaffManagement: React.FC = () => {
                     </Typography>
                   </Box>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Chip
                     label={staff.is_active === false ? 'Inactive' : 'Active'}
                     color={staff.is_active === false ? 'default' : 'success'}
                     size="small"
                   />
+                  <Tooltip title="Edit Profile">
+                    <IconButton
+                      onClick={() => handleOpenEdit(staff)}
+                      color="primary"
+                    >
+                      <Edit />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title={staff.is_active === false ? 'Reactivate Account' : 'Deactivate Account'}>
                     <IconButton
                       onClick={() => handleToggleActive(staff.user_id, staff.is_active !== false)}
@@ -209,7 +418,7 @@ const StaffManagement: React.FC = () => {
       )}
 
       {/* Create Staff Dialog */}
-      <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={isCreateDialogOpen} onClose={handleCloseCreateDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Add New Staff Member</DialogTitle>
         <form onSubmit={handleCreateStaff}>
           <DialogContent>
@@ -223,11 +432,46 @@ const StaffManagement: React.FC = () => {
                 {success}
               </Alert>
             )}
+            
+            {/* Avatar Upload */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <Box sx={{ position: 'relative' }}>
+                <Avatar
+                  src={createForm.avatarPreview || undefined}
+                  sx={{ width: 100, height: 100, fontSize: '2.5rem' }}
+                >
+                  {createForm.name ? createForm.name.charAt(0).toUpperCase() : <Person />}
+                </Avatar>
+                <IconButton
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                  }}
+                  size="small"
+                  onClick={() => createFileInputRef.current?.click()}
+                  disabled={isSubmitting}
+                >
+                  <PhotoCamera fontSize="small" />
+                </IconButton>
+                <input
+                  type="file"
+                  ref={createFileInputRef}
+                  hidden
+                  accept="image/*"
+                  onChange={handleCreateFileSelect}
+                />
+              </Box>
+            </Box>
+            
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <TextField
                 label="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={createForm.name}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
                 fullWidth
                 required
                 disabled={isSubmitting}
@@ -238,8 +482,8 @@ const StaffManagement: React.FC = () => {
               <TextField
                 label="Email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={createForm.email}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
                 fullWidth
                 required
                 disabled={isSubmitting}
@@ -250,8 +494,8 @@ const StaffManagement: React.FC = () => {
               <TextField
                 label="Password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={createForm.password}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
                 fullWidth
                 required
                 disabled={isSubmitting}
@@ -263,11 +507,97 @@ const StaffManagement: React.FC = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
+            <Button onClick={handleCloseCreateDialog} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
               {isSubmitting ? <CircularProgress size={24} /> : 'Create Staff'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Edit Staff Dialog */}
+      <Dialog open={isEditDialogOpen} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Staff Member</DialogTitle>
+        <form onSubmit={handleUpdateStaff}>
+          <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {success}
+              </Alert>
+            )}
+            
+            {/* Avatar Upload */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <Box sx={{ position: 'relative' }}>
+                <Avatar
+                  src={editForm.avatarPreview || undefined}
+                  sx={{ width: 100, height: 100, fontSize: '2.5rem' }}
+                >
+                  {editForm.name ? editForm.name.charAt(0).toUpperCase() : <Person />}
+                </Avatar>
+                <IconButton
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                  }}
+                  size="small"
+                  onClick={() => editFileInputRef.current?.click()}
+                  disabled={isSubmitting}
+                >
+                  <PhotoCamera fontSize="small" />
+                </IconButton>
+                <input
+                  type="file"
+                  ref={editFileInputRef}
+                  hidden
+                  accept="image/*"
+                  onChange={handleEditFileSelect}
+                />
+              </Box>
+            </Box>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Full Name"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                fullWidth
+                required
+                disabled={isSubmitting}
+                InputProps={{
+                  startAdornment: <Person sx={{ color: 'text.secondary', mr: 1 }} />,
+                }}
+              />
+              <TextField
+                label="Email"
+                type="email"
+                value={editForm.email}
+                fullWidth
+                disabled
+                helperText="Email cannot be changed"
+                InputProps={{
+                  startAdornment: <Email sx={{ color: 'text.secondary', mr: 1 }} />,
+                }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseEditDialog} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={isSubmitting}>
+              {isSubmitting ? <CircularProgress size={24} /> : 'Save Changes'}
             </Button>
           </DialogActions>
         </form>

@@ -10,6 +10,7 @@ interface Profile {
   email: string;
   role: UserRole;
   is_active: boolean;
+  avatar_url: string | null;
 }
 
 interface AuthContextType {
