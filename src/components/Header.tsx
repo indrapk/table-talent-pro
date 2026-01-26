@@ -65,6 +65,7 @@ const Header: React.FC<HeaderProps> = ({ onLogout, viewSwitcher }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Avatar 
+              src={profile?.avatar_url || undefined}
               sx={{ 
                 width: 36, 
                 height: 36, 
@@ -72,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ onLogout, viewSwitcher }) => {
                 color: isManager ? 'primary.main' : 'white',
               }}
             >
-              <Person sx={{ fontSize: 20 }} />
+              {profile?.name?.charAt(0).toUpperCase() || <Person sx={{ fontSize: 20 }} />}
             </Avatar>
             <Box>
               <Typography variant="body2" fontWeight={600} color="text.primary">
