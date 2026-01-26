@@ -189,14 +189,30 @@ const StaffDashboard: React.FC = () => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 900, mx: 'auto' }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={700} color="primary.main">
-          My Schedule
-        </Typography>
-        <Typography color="text.secondary">
-          View your assignments and shift history
-        </Typography>
+      {/* Header with Profile */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
+        <Avatar
+          src={profile?.avatar_url || undefined}
+          sx={{
+            width: 80,
+            height: 80,
+            bgcolor: 'primary.main',
+            fontSize: '2rem',
+            fontWeight: 600,
+            border: '3px solid',
+            borderColor: 'primary.light',
+          }}
+        >
+          {profile?.name?.charAt(0).toUpperCase()}
+        </Avatar>
+        <Box>
+          <Typography variant="h4" fontWeight={700} color="primary.main">
+            Welcome, {profile?.name?.split(' ')[0]}!
+          </Typography>
+          <Typography color="text.secondary">
+            View your assignments and shift history
+          </Typography>
+        </Box>
       </Box>
 
       {/* Stats */}
