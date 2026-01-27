@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Typography,
@@ -23,7 +23,9 @@ import {
   Upcoming,
   History,
   EventAvailable,
+  Lock,
 } from '@mui/icons-material';
+import ChangePasswordDialog from './ChangePasswordDialog';
 import { format, parseISO, isAfter, isBefore, isToday as isDateToday, startOfDay } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useSchedule } from '@/context/ScheduleContext';
@@ -36,6 +38,7 @@ interface ProfilePageProps {
 const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
   const { profile } = useAuth();
   const { shifts, getAssignmentsForStaff } = useSchedule();
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
   const myAssignments = useMemo(() => {
     if (!profile) return [];
@@ -349,6 +352,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                   </Box>
                 </Box>
               )}
+
+              {/* Change Password Button */}
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Lock />}
+                  onClick={() => setIsPasswordDialogOpen(true)}
+                  fullWidth
+                >
+                  Change Password
+                </Button>
+              </Box>
             </Box>
           </Paper>
         </Grid>
@@ -433,6 +448,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={isPasswordDialogOpen}
+        onClose={() => setIsPasswordDialogOpen(false)}
+      />
     </Box>
   );
 };
