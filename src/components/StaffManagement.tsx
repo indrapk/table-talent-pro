@@ -26,7 +26,9 @@ import {
   Lock,
   Edit,
   PhotoCamera,
+  VpnKey,
 } from '@mui/icons-material';
+import ResetPasswordDialog from './ResetPasswordDialog';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -49,7 +51,9 @@ const StaffManagement: React.FC = () => {
   const { profiles, refreshProfiles } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<typeof profiles[0] | null>(null);
+  const [resetPasswordStaff, setResetPasswordStaff] = useState<typeof profiles[0] | null>(null);
   
   // Create form state
   const [createForm, setCreateForm] = useState<StaffFormData>({
@@ -219,6 +223,16 @@ const StaffManagement: React.FC = () => {
     setError('');
     setSuccess('');
     setIsEditDialogOpen(true);
+  };
+
+  const handleOpenResetPassword = (staff: typeof profiles[0]) => {
+    setResetPasswordStaff(staff);
+    setIsResetPasswordDialogOpen(true);
+  };
+
+  const handleCloseResetPassword = () => {
+    setIsResetPasswordDialogOpen(false);
+    setResetPasswordStaff(null);
   };
 
   const handleUpdateStaff = async (e: React.FormEvent) => {
@@ -393,6 +407,14 @@ const StaffManagement: React.FC = () => {
                       color="primary"
                     >
                       <Edit />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Reset Password">
+                    <IconButton
+                      onClick={() => handleOpenResetPassword(staff)}
+                      color="warning"
+                    >
+                      <VpnKey />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={staff.is_active === false ? 'Reactivate Account' : 'Deactivate Account'}>
@@ -602,6 +624,16 @@ const StaffManagement: React.FC = () => {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Reset Password Dialog */}
+      {resetPasswordStaff && (
+        <ResetPasswordDialog
+          open={isResetPasswordDialogOpen}
+          onClose={handleCloseResetPassword}
+          staffName={resetPasswordStaff.name}
+          staffUserId={resetPasswordStaff.user_id}
+        />
+      )}
     </Box>
   );
 };
