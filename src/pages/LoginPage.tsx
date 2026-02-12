@@ -141,12 +141,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   <TextField
                     fullWidth
                     label="Phone Number"
+                    type="tel"
+                    inputMode="numeric"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
                     sx={{ mb: 2 }}
                     required
                     disabled={isSubmitting}
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="e.g. 5551234567"
                   />
                   <TextField
                     fullWidth

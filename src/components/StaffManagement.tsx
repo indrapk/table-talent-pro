@@ -525,11 +525,13 @@ const StaffManagement: React.FC = () => {
               />
               <TextField
                 label="Phone Number"
+                type="tel"
+                inputMode="numeric"
                 value={createForm.phoneNumber}
-                onChange={(e) => setCreateForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, phoneNumber: e.target.value.replace(/[^0-9]/g, '') }))}
                 fullWidth
                 disabled={isSubmitting}
-                placeholder="+1 (555) 123-4567"
+                placeholder="e.g. 5551234567"
                 InputProps={{
                   startAdornment: <Phone sx={{ color: 'text.secondary', mr: 1 }} />,
                 }}
@@ -635,11 +637,13 @@ const StaffManagement: React.FC = () => {
               />
               <TextField
                 label="Phone Number"
+                type="tel"
+                inputMode="numeric"
                 value={editForm.phoneNumber}
-                onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value.replace(/[^0-9]/g, '') }))}
                 fullWidth
                 disabled={isSubmitting}
-                placeholder="+1 (555) 123-4567"
+                placeholder="e.g. 5551234567"
                 InputProps={{
                   startAdornment: <Phone sx={{ color: 'text.secondary', mr: 1 }} />,
                 }}
