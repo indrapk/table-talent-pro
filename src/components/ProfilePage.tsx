@@ -14,6 +14,7 @@ import Grid from '@mui/material/Grid';
 import {
   Person,
   Email,
+  Phone,
   Badge,
   CalendarMonth,
   AccessTime,
@@ -163,6 +164,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               <Email sx={{ fontSize: 20 }} />
               <Typography variant="body1">{profile.email}</Typography>
             </Box>
+            {profile.phone_number && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, opacity: 0.9, mt: 0.5 }}>
+                <Phone sx={{ fontSize: 20 }} />
+                <Typography variant="body1">{profile.phone_number}</Typography>
+              </Box>
+            )}
           </Box>
         </Box>
       </Paper>
@@ -295,6 +302,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                 </Typography>
                 <Typography variant="body1" fontWeight={600}>
                   {profile.email}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                  Phone Number
+                </Typography>
+                <Typography variant="body1" fontWeight={600}>
+                  {profile.phone_number || 'Not provided'}
                 </Typography>
               </Box>
 

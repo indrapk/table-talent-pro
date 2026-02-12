@@ -11,6 +11,7 @@ interface Profile {
   role: UserRole;
   is_active: boolean;
   avatar_url: string | null;
+  phone_number: string | null;
 }
 
 interface AuthContextType {
@@ -20,7 +21,7 @@ interface AuthContextType {
   profiles: Profile[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (name: string, email: string, password: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
+  signup: (name: string, email: string, password: string, role: UserRole, phoneNumber?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isManager: boolean;
@@ -132,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   }, []);
 
-  const signup = useCallback(async (name: string, email: string, password: string, role: UserRole) => {
+  const signup = useCallback(async (name: string, email: string, password: string, role: UserRole, phoneNumber?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -143,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: {
           name,
           role,
+          phone_number: phoneNumber || null,
         },
       },
     });
