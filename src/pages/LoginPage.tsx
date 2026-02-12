@@ -26,6 +26,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [secretCode, setSecretCode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +53,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           setIsSubmitting(false);
           return;
         }
-        const result = await signup(name, email, password, 'manager');
+        if (!phoneNumber.trim()) {
+          setError('Phone number is required');
+          setIsSubmitting(false);
+          return;
+        }
+        const result = await signup(name, email, password, 'manager', phoneNumber);
         if (result.success) {
           onLoginSuccess();
         } else {
@@ -131,6 +137,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     sx={{ mb: 2 }}
                     required
                     disabled={isSubmitting}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    sx={{ mb: 2 }}
+                    required
+                    disabled={isSubmitting}
+                    placeholder="+1 (555) 123-4567"
                   />
                   <TextField
                     fullWidth

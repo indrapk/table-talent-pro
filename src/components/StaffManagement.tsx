@@ -23,6 +23,7 @@ import {
   Cancel,
   Person,
   Email,
+  Phone,
   Lock,
   Edit,
   PhotoCamera,
@@ -36,6 +37,7 @@ interface StaffFormData {
   name: string;
   email: string;
   password: string;
+  phoneNumber: string;
   avatarFile: File | null;
   avatarPreview: string | null;
 }
@@ -43,6 +45,7 @@ interface StaffFormData {
 interface EditFormData {
   name: string;
   email: string;
+  phoneNumber: string;
   avatarFile: File | null;
   avatarPreview: string | null;
 }
@@ -60,6 +63,7 @@ const StaffManagement: React.FC = () => {
     name: '',
     email: '',
     password: '',
+    phoneNumber: '',
     avatarFile: null,
     avatarPreview: null,
   });
@@ -68,6 +72,7 @@ const StaffManagement: React.FC = () => {
   const [editForm, setEditForm] = useState<EditFormData>({
     name: '',
     email: '',
+    phoneNumber: '',
     avatarFile: null,
     avatarPreview: null,
   });
@@ -165,7 +170,7 @@ const StaffManagement: React.FC = () => {
       }
 
       const { data, error: fnError } = await supabase.functions.invoke('create-staff', {
-        body: { name: createForm.name, email: createForm.email, password: createForm.password }
+        body: { name: createForm.name, email: createForm.email, password: createForm.password, phoneNumber: createForm.phoneNumber }
       });
 
       if (fnError) {
@@ -196,6 +201,7 @@ const StaffManagement: React.FC = () => {
         name: '',
         email: '',
         password: '',
+        phoneNumber: '',
         avatarFile: null,
         avatarPreview: null,
       });
@@ -217,6 +223,7 @@ const StaffManagement: React.FC = () => {
     setEditForm({
       name: staff.name,
       email: staff.email,
+      phoneNumber: (staff as any).phone_number || '',
       avatarFile: null,
       avatarPreview: staff.avatar_url || null,
     });
@@ -265,6 +272,7 @@ const StaffManagement: React.FC = () => {
         .update({ 
           name: editForm.name,
           avatar_url: avatarUrl,
+          phone_number: editForm.phoneNumber || null,
         })
         .eq('user_id', editingStaff.user_id);
 
@@ -316,6 +324,7 @@ const StaffManagement: React.FC = () => {
       name: '',
       email: '',
       password: '',
+      phoneNumber: '',
       avatarFile: null,
       avatarPreview: null,
     });
@@ -329,6 +338,7 @@ const StaffManagement: React.FC = () => {
     setEditForm({
       name: '',
       email: '',
+      phoneNumber: '',
       avatarFile: null,
       avatarPreview: null,
     });
@@ -514,6 +524,17 @@ const StaffManagement: React.FC = () => {
                 }}
               />
               <TextField
+                label="Phone Number"
+                value={createForm.phoneNumber}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                fullWidth
+                disabled={isSubmitting}
+                placeholder="+1 (555) 123-4567"
+                InputProps={{
+                  startAdornment: <Phone sx={{ color: 'text.secondary', mr: 1 }} />,
+                }}
+              />
+              <TextField
                 label="Password"
                 type="password"
                 value={createForm.password}
@@ -610,6 +631,17 @@ const StaffManagement: React.FC = () => {
                 helperText="Email cannot be changed"
                 InputProps={{
                   startAdornment: <Email sx={{ color: 'text.secondary', mr: 1 }} />,
+                }}
+              />
+              <TextField
+                label="Phone Number"
+                value={editForm.phoneNumber}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                fullWidth
+                disabled={isSubmitting}
+                placeholder="+1 (555) 123-4567"
+                InputProps={{
+                  startAdornment: <Phone sx={{ color: 'text.secondary', mr: 1 }} />,
                 }}
               />
             </Box>
