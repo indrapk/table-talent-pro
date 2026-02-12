@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     }
 
     // Get request body
-    const { name, email, password } = await req.json()
+    const { name, email, password, phoneNumber } = await req.json()
 
     if (!name || !email || !password) {
       return new Response(
@@ -79,7 +79,8 @@ Deno.serve(async (req) => {
       email_confirm: true, // Auto-confirm email
       user_metadata: {
         name,
-        role: 'staff'
+        role: 'staff',
+        phone_number: phoneNumber || null
       }
     })
 
