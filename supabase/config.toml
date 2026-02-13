@@ -1,1 +1,11 @@
 project_id = "ptemmlfejsyggkrmqkks"
+
+[
+functions.create-staff
+]
+verify_jwt = false
+
+[
+functions.reset-staff-password
+]
+verify_jwt = false
